@@ -9,7 +9,7 @@ SET xmloption = content;
 SET client_min_messages = warning;
 SET row_security = off;
 
--- Drop Existing Tables (For a clean slate during initialization)
+-- Drop Existing Tables
 DROP TABLE IF EXISTS uservotes CASCADE;
 DROP TABLE IF EXISTS ratings CASCADE;
 DROP TABLE IF EXISTS quizsubmissions CASCADE;
@@ -135,3 +135,23 @@ CREATE TABLE uservotes (
 -- Create Indexes
 CREATE INDEX idx_enrollments_course_user ON enrollments (course_id, user_id);
 CREATE INDEX idx_forum_posts_course ON forumposts (course_id);
+
+-- Seed Data
+INSERT INTO users (name, email, password_hash, role) VALUES
+('Test User', 'test@example.com', '$2b$10$examplehash', 'student'),
+('Test Instructor', 'instructor@example.com', '$2b$10$examplehash', 'instructor');
+
+INSERT INTO courses (title, description, category, difficulty, instructor_id) VALUES
+('Docker Fundamentals', 'Learn the basics of Docker containers', 'DevOps', 'Beginner', 2);
+
+INSERT INTO modules (course_id, title, description, order_index) VALUES
+(1, 'Introduction to Docker', 'Learn what Docker is and how it works', 1);
+
+INSERT INTO coursecontent (module_id, type, url, duration, order_index) VALUES
+(1, 'video', 'https://www.youtube.com/watch?v=Gjnup-PuquQ', '2m', 1),
+(1, 'PDF', 'https://www.nxp.com/docs/en/supporting-information/DOCKER-CONTAINER-FUNDAMENTALS.pdf', null, 2);
+
+INSERT INTO quizzes (module_id, questions, passing_score, course_id) VALUES
+(1, '[
+  {"question": "What is a Docker container?", "options": ["A virtual machine", "A lightweight virtualized environment", "A database"], "answer": "A lightweight virtualized environment"}
+]'::json, 70, 1);
