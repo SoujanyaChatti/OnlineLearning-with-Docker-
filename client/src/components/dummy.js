@@ -27,6 +27,11 @@ const CourseContent = () => {
   const [forumPosts, setForumPosts] = useState([]);
   const [newPostContent, setNewPostContent] = useState('');
 
+  // Helper function to extract numeric ID from prefixed ID
+  const getNumericId = (id) => {
+    return id.split('-')[1]; // e.g., 'content-1' -> '1', 'quiz-1' -> '1'
+  };
+
   const fetchContents = useCallback(
     async (moduleId) => {
       try {
@@ -41,16 +46,9 @@ const CourseContent = () => {
         if (ids.length !== uniqueIds.size) {
           console.warn(`Duplicate content IDs detected for module ${moduleId}:`, ids);
         }
-        // Deduplicate by keeping the item with the lowest order_index for each ID
-        const uniqueContentData = Array.from(
-          new Map(
-            contentData
-              .sort((a, b) => a.order_index - b.order_index) // Sort to prioritize lower order_index
-              .map((item) => [item.id, item])
-          ).values()
-        );
-        setContents((prev) => ({ ...prev, [moduleId]: uniqueContentData }));
-        return uniqueContentData;
+        // No need to deduplicate since backend ensures unique IDs
+        setContents((prev) => ({ ...prev, [moduleId]: contentData }));
+        return contentData;
       } catch (err) {
         setError('Failed to load content for this module.');
         return [];
@@ -141,10 +139,11 @@ const CourseContent = () => {
     if (enrollmentId && selectedContent && expandedModule && contents[expandedModule]) {
       const content = contents[expandedModule].find((c) => c.id === selectedContent);
       if (content && content.type.toLowerCase() === 'quiz') {
+        const numericId = getNumericId(content.id); // Use numeric ID for quiz
         axios
           .get(`${API_URL}/api/submissions/count`, {
             headers: { Authorization: `Bearer ${token}` },
-            params: { enrollmentId, quizId: content.id },
+            params: { enrollmentId, quizId: numericId },
           })
           .then((res) => {
             setAttemptCount(res.data.attemptCount || 0);
@@ -156,7 +155,7 @@ const CourseContent = () => {
         axios
           .get(`${API_URL}/api/submissions/max-score`, {
             headers: { Authorization: `Bearer ${token}` },
-            params: { quizId: content.id },
+            params: { quizId: numericId },
           })
           .then((res) => {
             setMaxScore(res.data.maxScore || 100);
@@ -174,12 +173,14 @@ const CourseContent = () => {
   const markAsCompleted = (e) => {
     e.preventDefault();
     if (selectedContent && enrollmentId) {
+      const content = contents[expandedModule].find((c) => c.id === selectedContent);
+      const numericId = getNumericId(content.id); // Use numeric ID
       axios
         .post(
           `${API_URL}/api/courses/enrollments/${enrollmentId}/progress`,
           {
             moduleId: expandedModule,
-            contentId: selectedContent,
+            contentId: numericId,
           },
           {
             headers: { Authorization: `Bearer ${token}` },
@@ -228,12 +229,13 @@ const CourseContent = () => {
     const percentageScore = totalQuestions > 0 ? (score / totalQuestions) * 100 : 0;
     setQuizScore(percentageScore);
 
+    const numericId = getNumericId(content.id); // Use numeric ID
     axios
       .post(
         `${API_URL}/api/submissions`,
         {
           enrollmentId,
-          quizId: content.id,
+          quizId: numericId,
           userId,
           score: percentageScore,
         },
@@ -280,10 +282,11 @@ const CourseContent = () => {
     setQuizScore(null);
     setQuizAnswers({});
     if (content.type.toLowerCase() === 'quiz' && enrollmentId) {
+      const numericId = getNumericId(content.id); // Use numeric ID
       axios
         .get(`${API_URL}/api/submissions/count`, {
           headers: { Authorization: `Bearer ${token}` },
-          params: { enrollmentId, quizId: content.id },
+          params: { enrollmentId, quizId: numericId },
         })
         .then((res) => {
           setAttemptCount(res.data.attemptCount || 0);
@@ -295,7 +298,7 @@ const CourseContent = () => {
       axios
         .get(`${API_URL}/api/submissions/max-score`, {
           headers: { Authorization: `Bearer ${token}` },
-          params: { quizId: content.id },
+          params: { quizId: numericId },
         })
         .then((res) => {
           setMaxScore(res.data.maxScore || 100);
@@ -504,18 +507,14 @@ const CourseContent = () => {
         } else {
           return <div className="alert alert-warning">No video URL provided</div>;
         }
-        case 'pdf':
+      case 'pdf':
         return (
           <div>
-            <iframe src={content.url} className="w-100" height="600px" title="PDF Viewer">
-              <p>
-                Your browser does not support PDFs.{' '}
-                <a href={content.url} target="_blank" rel="noopener noreferrer">
-                  Download the PDF
-                </a>
-                .
-              </p>
-            </iframe>
+            <p>
+              <a href={content.url} target="_blank" rel="noopener noreferrer">
+                View or Download PDF
+              </a>
+            </p>
             <button className="btn btn-success mb-2" onClick={markAsCompleted} disabled={!enrollmentId}>
               Mark as Completed
             </button>
@@ -623,22 +622,22 @@ const CourseContent = () => {
                   {module.title} {expandedModule === module.id ? '▼' : '▶️'}
                 </h5>
                 {expandedModule === module.id && contents[module.id] && contents[module.id].length > 0 ? (
-  <ul className="content-list">
-    {contents[module.id]
-      .sort((a, b) => a.order_index - b.order_index) // Sort by order_index
-      .map((content, index) => (
-        <li
-          key={`${content.id}-${index}`} // Use composite key to handle duplicates
-          className={`content-item ${selectedContent === content.id ? 'selected' : ''}`}
-          onClick={(e) => handleContentClick(e, content)}
-        >
-          {content.type}: {content.url ? content.url.split('/').pop() : 'Unnamed Content'}
-        </li>
-      ))}
-  </ul>
-) : (
-  expandedModule === module.id && <p className="text-center">No content available.</p>
-)}
+                  <ul className="content-list">
+                    {contents[module.id]
+                      .sort((a, b) => a.order_index - b.order_index)
+                      .map((content, index) => (
+                        <li
+                          key={`${content.id}-${index}`}
+                          className={`content-item ${selectedContent === content.id ? 'selected' : ''}`}
+                          onClick={(e) => handleContentClick(e, content)}
+                        >
+                          {content.type}: {content.url ? content.url.split('/').pop() : 'Unnamed Content'}
+                        </li>
+                      ))}
+                  </ul>
+                ) : (
+                  expandedModule === module.id && <p className="text-center">No content available.</p>
+                )}
               </div>
             ))
           )}
