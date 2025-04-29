@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
-const { pool } = require('../db'); // Destructure pool to match original db.js export
+const { pool } = require('../db');
 require('dotenv').config();
 
 router.get('/:moduleId/contents', async (req, res) => {
@@ -34,8 +34,10 @@ router.get('/:moduleId/contents', async (req, res) => {
       [moduleId]
     );
 
+    // Map CourseContent with prefixed IDs
     const contents = contentResult.rows.map(row => ({
       ...row,
+      id: `content-${row.id}`, // Prefix to avoid conflicts
       questions: null,
       passing_score: null
     }));
@@ -48,22 +50,25 @@ router.get('/:moduleId/contents', async (req, res) => {
         questions = typeof quizRow.questions === 'string' ? JSON.parse(quizRow.questions) : quizRow.questions;
       } catch (e) {
         console.error('Failed to parse questions JSON:', e.message);
-        questions = []; // Default to empty array on parse failure
+        questions = [];
       }
       contents.push({
-        id: quizRow.id,
+        id: `quiz-${quizRow.id}`, // Prefix to avoid conflicts
         type: 'quiz',
-        url: 'http://example.com/quiz', // Placeholder URL
+        url: null, // Remove placeholder URL
         duration: null,
-        order_index: 999, // High value to place at end
+        order_index: contentResult.rows.length + 1, // Place after content
         questions: questions,
         passing_score: quizRow.passing_score || 70,
         course_id: quizRow.course_id
       });
     }
 
-    console.log('Fetched contents with quizzes:', contents); // Debug log
-    res.status(200).json(contents);
+    // Sort by order_index to ensure correct display order
+    const sortedContents = contents.sort((a, b) => a.order_index - b.order_index);
+
+    console.log('Fetched contents with quizzes:', sortedContents);
+    res.status(200).json(sortedContents);
   } catch (err) {
     console.error('Content fetch error:', err.stack);
     res.status(500).json({ error: 'Server error' });
