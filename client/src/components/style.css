@@ -1,0 +1,36 @@
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 20px;
+}
+.profile-icon {
+    cursor: pointer;
+}
+.profile-menu {
+    position: absolute;
+    top: 60px;
+    right: 20px;
+  
+    border: 1px solid #ddd;
+    padding: 10px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    z-index: 1000;
+}
+.hidden {
+    display: none;
+}
+.course-list {
+    margin: 10px 0;
+}
+.profile-menu {
+    position: absolute;
+    top: 60px;
+    right: 20px;
+    
+    border: 1px solid #ddd;
+    padding: 10px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    z-index: 1000;
+    min-width: 250px;
+  }

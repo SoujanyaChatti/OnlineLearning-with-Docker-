@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Dashboard</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header>
+        <h1>Student Dashboard</h1>
+        <div class="profile-icon" onclick="toggleProfileMenu()">
+            <i class="fas fa-user-circle" style="font-size: 24px;"></i>
+        </div>
+    </header>
+    <div id="profile-menu" class="profile-menu hidden">
+        <h3>Profile</h3>
+        <div id="enrolled-courses"></div>
+        <div id="completed-courses"></div>
+    </div>
+    <script src="StudentDashboard.js"></script>
+</body>
+</html>
