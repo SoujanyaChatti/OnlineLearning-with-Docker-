@@ -510,11 +510,15 @@ const CourseContent = () => {
       case 'pdf':
         return (
           <div>
-            <p>
-              <a href={content.url} target="_blank" rel="noopener noreferrer">
-                View or Download PDF
-              </a>
-            </p>
+            <iframe src={content.url} className="w-100" height="600px" title="PDF Viewer">
+              <p>
+                Your browser does not support PDFs.{' '}
+                <a href={content.url} target="_blank" rel="noopener noreferrer">
+                  Download the PDF
+                </a>
+                .
+              </p>
+            </iframe>
             <button className="btn btn-success mb-2" onClick={markAsCompleted} disabled={!enrollmentId}>
               Mark as Completed
             </button>
