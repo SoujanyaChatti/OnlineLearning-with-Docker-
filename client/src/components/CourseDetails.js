@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
-import { jwtDecode } from 'jwt-decode';
+// import { jwtDecode } from 'jwt-decode'; // No longer directly used
 import { API_URL } from './config';
+import { getToken, getUserDetails } from '../utils/auth'; // Import auth functions
+import ErrorDisplay from './common/ErrorDisplay'; // Import ErrorDisplay
 
 const CourseDetails = () => {
   const { id } = useParams();
@@ -11,15 +13,15 @@ const CourseDetails = () => {
   const [isEnrolled, setIsEnrolled] = useState(false);
   const [loading, setLoading] = useState(true); // Start as true to show loading initially
   const [error, setError] = useState(null);
-  const token = localStorage.getItem('token');
-  console.log('Token retrieved:', token ? token.substring(0, 10) + '...' : 'null');
-  const decoded = token ? jwtDecode(token) : null;
-  const userId = decoded ? decoded.id : 1;
+  const token = getToken(); // Use auth function
+  const userDetails = getUserDetails(); // Use auth function
+  // Fallback to a default/guest user ID if not logged in, or handle appropriately
+  const userId = userDetails ? userDetails.id : 1; 
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (token && id) {
-      console.log(`Fetching course for id: ${id}, userId: ${userId}, token: ${token.substring(0, 10)}...`);
+    if (token && id && userDetails) { // Ensure userDetails is available
+      console.log(`Fetching course for id: ${id}, userId: ${userDetails.id}, token: ${token.substring(0, 10)}...`);
       setLoading(true);
       axios.get(`${API_URL}/api/courses/${id}`, {
         headers: { Authorization: `Bearer ${token}` }
@@ -53,8 +55,8 @@ const CourseDetails = () => {
         })
         .finally(() => setLoading(false));
 
-      console.log(`Checking enrollment for userId: ${userId}, courseId: ${id}`);
-      axios.get(`${API_URL}/api/courses/enrollments?user_id=${userId}`, {
+      console.log(`Checking enrollment for userId: ${userDetails.id}, courseId: ${id}`);
+      axios.get(`${API_URL}/api/courses/enrollments?user_id=${userDetails.id}`, {
         headers: { Authorization: `Bearer ${token}` }
       })
         .then(res => {
@@ -77,13 +79,13 @@ const CourseDetails = () => {
     } else {
       console.log('No token available, setting fallback:', { id, token });
       setCourse({ id, title: `Course ${id}`, description: 'Please log in to view details', difficulty: 'N/A', rating: 0, instructor_id: null });
-      setError('No token available.');
+      setError('No token or user details available.');
       setLoading(false);
     }
-  }, [token, userId, id]);
+  }, [token, userDetails, id]); // Add userDetails to dependency array
 
   const handleEnroll = () => {
-    if (!token) {
+    if (!token || !userDetails) { // Check for userDetails
       setError('Please log in to enroll.');
       return;
     }
@@ -95,7 +97,7 @@ const CourseDetails = () => {
     setError(null);
     axios.post(`${API_URL}/api/courses/enrollments`, {
       course_id: parseInt(id),
-      user_id: userId
+      user_id: userDetails.id // Use userDetails.id
     }, {
       headers: { Authorization: `Bearer ${token}` }
     })
@@ -120,7 +122,7 @@ const CourseDetails = () => {
   return (
     <div className="container mt-4 p-4 bg-light rounded shadow-sm">
       <h1 className="mb-3">{course.title || 'Course Title Not Available'}</h1>
-      {error && <div className="alert alert-danger">{error}</div>}
+      <ErrorDisplay message={error} />
       <p className="mb-2"><strong>Instructor:</strong> {course.instructor_id ? `Instructor ${course.instructor_id}` : 'N/A'}</p>
       <p className="mb-2"><strong>Description:</strong> {course.description || 'No description available.'}</p>
       <p className="mb-2"><strong>Difficulty:</strong> {course.difficulty || 'N/A'}</p>

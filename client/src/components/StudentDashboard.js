@@ -1,8 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { Link } from 'react-router-dom';
-import { jwtDecode } from 'jwt-decode';
+// import { jwtDecode } from 'jwt-decode'; // No longer directly used
 import { API_URL } from './config';
+import { getToken, getUserDetails } from '../utils/auth'; // Import auth functions
+import './Form.css'; // Import the Form.css for background style
+
 const StudentDashboard = () => {
   const [enrolledCourses, setEnrolledCourses] = useState([]);
   const [recommendedCourses, setRecommendedCourses] = useState([]);
@@ -13,16 +16,17 @@ const StudentDashboard = () => {
   const [studentName, setStudentName] = useState('Student'); // Placeholder
   const [filters, setFilters] = useState({ difficulty: '', rating: '', category: '' });
   const [hasFetchedRecommendations, setHasFetchedRecommendations] = useState(false); // Prevent retry
-  const token = localStorage.getItem('token');
-  const decoded = token ? jwtDecode(token) : null;
-  const userId = decoded ? decoded.id : null;
+  const token = getToken(); // Use auth function
+  const userDetails = getUserDetails(); // Use auth function
+  // Fallback to a default/guest user ID if not logged in, or handle appropriately
+  const userId = userDetails ? userDetails.id : null; 
   console.log('User ID from token:', userId);
 
   useEffect(() => {
-    if (token) {
-      console.log('Fetching enrolled courses for userId:', userId);
+    if (token && userDetails) { // Ensure userDetails is available
+      console.log('Fetching enrolled courses for userId:', userDetails.id);
       axios
-        .get(`${API_URL}/api/courses/enrollments?user_id=${userId}`, {
+        .get(`${API_URL}/api/courses/enrollments?user_id=${userDetails.id}`, {
           headers: { Authorization: `Bearer ${token}` },
         })
         .then((res) => {
@@ -38,9 +42,9 @@ const StudentDashboard = () => {
 
           if (!hasFetchedRecommendations) {
             const categories = [...new Set(courses.map((c) => c.category))];
-            if (categories.length > 0) {
+            if (categories.length > 0 && userDetails) { // Ensure userDetails is available
               axios
-                .get(`${API_URL}/api/courses/recommend-by-interest?user_id=${userId}&categories=${categories.join(',')}&limit=3`, {
+                .get(`${API_URL}/api/courses/recommend-by-interest?user_id=${userDetails.id}&categories=${categories.join(',')}&limit=3`, {
                   headers: { Authorization: `Bearer ${token}` },
                 })
                 .then((res) => {
@@ -122,7 +126,7 @@ const StudentDashboard = () => {
 
       setAnnouncements(['New course: Introduction to AI launches next week!', 'Quiz deadline extended for Module 2.']);
     }
-  }, [token, userId, hasFetchedRecommendations]);
+  }, [token, userDetails, hasFetchedRecommendations]); // Add userDetails to dependency array
 
   const handleFilterChange = (e) => {
     const { name, value } = e.target;
@@ -159,7 +163,7 @@ const StudentDashboard = () => {
   };
 
   return (
-    <div className="min-vh-100 p-4" style={{ backgroundImage: 'url(/background.jpg)', backgroundSize: 'cover', backgroundPosition: 'center', backgroundRepeat: 'no-repeat' }}>
+    <div className="form-container-background min-vh-100 p-4"> {/* Apply form-container-background */}
       <div className="container bg-white bg-opacity-90 p-4 rounded shadow-sm">
         <h1 className="text-center mb-4">Welcome, {studentName}!</h1>
         <p className="text-center mb-4 text-muted">Stay on track with your learning journey!</p>

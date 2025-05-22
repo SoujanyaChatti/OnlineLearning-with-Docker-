@@ -1,0 +1,27 @@
+.form-container-background {
+  background-image: url('/background.jpg'); /* Assuming background.jpg is in client/public */
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+}
+
+.form-container-overlay {
+  background-color: rgba(255, 255, 255, 0.9);
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  max-width: 500px; /* Adjust as needed */
+}
+
+/* If the original .form-container class from a framework (e.g., Bootstrap)
+   was providing other essential styles (like width, max-width, padding, etc.),
+   those might need to be incorporated here or the .form-container class
+   should be kept on the inner div if it doesn't conflict.
+   For this task, we are primarily focused on replacing inline styles.
+   The .form-container-overlay is designed to replace the inner div's styling.
+*/

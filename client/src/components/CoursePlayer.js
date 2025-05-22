@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { API_URL } from './config'; // Import the config
+import { getToken } from '../utils/auth'; // Import auth function
 
 const CoursePlayer = ({ courseId }) => {
   const [contents, setContents] = useState([]);
   useEffect(() => {
-    const token = localStorage.getItem('token');
+    const token = getToken(); // Use auth function
     axios.get(`${API_URL}/api/courses/${courseId}/modules`, {
       headers: { Authorization: `Bearer ${token}` }
     })
@@ -20,8 +21,8 @@ const CoursePlayer = ({ courseId }) => {
       .catch(err => console.error('Content fetch error:', err));
   }, [courseId]);
   const updateProgress = (contentId, moduleId) => {
-    const token = localStorage.getItem('token');
-    axios.post(`${API_URL}/api/courses/enrollments/1/progress`, {
+    const token = getToken(); // Use auth function
+    axios.post(`${API_URL}/api/courses/enrollments/1/progress`, { // Assuming this is a placeholder or specific enrollment ID
       moduleId,
       contentId
     }, { headers: { Authorization: `Bearer ${token}` } })

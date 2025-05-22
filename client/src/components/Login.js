@@ -2,6 +2,10 @@ import React, { useState } from 'react';
 import axios from 'axios';
 import { useNavigate, Link } from 'react-router-dom';
 import { API_URL } from './config'; // Import the config
+import { storeToken, storeUserType, handleRedirect } from '../utils/auth'; // Import auth functions
+import { validateEmail, validateNotEmpty } from '../utils/validation'; // Import validation functions
+import ErrorDisplay from './common/ErrorDisplay'; // Import ErrorDisplay component
+import './Form.css'; // Import the new CSS file
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -12,31 +16,43 @@ const Login = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    // Basic client-side validation
-    if (!email || !password) {
-      setError('Please fill in all fields.');
+    setError(''); // Clear previous errors
+
+    const emailError = validateEmail(email);
+    if (emailError) {
+      setError(emailError);
       return;
     }
-    if (!/^\S+@\S+\.\S+$/.test(email)) {
-      setError('Please enter a valid email address.');
+
+    const passwordError = validateNotEmpty(password, 'Password');
+    if (passwordError) {
+      setError(passwordError);
       return;
     }
+
+    // It's good practice to also validate userType if it's a critical field,
+    // but the original code didn't, so we'll stick to the prompt's scope.
+    // const userTypeError = validateNotEmpty(userType, 'User Type');
+    // if (userTypeError) {
+    //   setError(userTypeError);
+    //   return;
+    // }
+
     try {
       const response = await axios.post(`${API_URL}/api/auth/login`, { email, password, userType });
-      localStorage.setItem('token', response.data.token);
-      localStorage.setItem('userType', userType); // Store user type
-      const redirectPath = userType === 'student' ? '/student' : userType === 'instructor' ? '/instructor' : '/admin';
-      navigate(redirectPath);
+      storeToken(response.data.token); // Use auth function
+      storeUserType(userType); // Use auth function
+      handleRedirect(userType, navigate); // Use auth function for redirection
     } catch (err) {
       setError(err.response?.data?.error || 'Login failed. Check your credentials or server connection.');
     }
   };
 
   return (
-    <div className="form-container" style={{ backgroundImage: 'url(/background.jpg)', backgroundSize: 'cover', backgroundPosition: 'center', backgroundRepeat: 'no-repeat' }}>
-      <div className="form-container" style={{ backgroundColor: 'rgba(255, 255, 255, 0.9)' }}>
+    <div className="form-container-background"> {/* Apply new class for background */}
+      <div className="form-container-overlay"> {/* Apply new class for overlay and remove form-container if it's redundant */}
         <h1 className="text-center mb-4">Login</h1>
-        {error && <div className="alert alert-danger text-center">{error}</div>}
+        <ErrorDisplay message={error} />
         <form onSubmit={handleSubmit} className="needs-validation" noValidate>
           <div className="mb-3">
             <label htmlFor="email" className="form-label">Email:</label>

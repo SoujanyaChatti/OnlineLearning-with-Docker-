@@ -1,19 +1,21 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-import { jwtDecode } from 'jwt-decode';
+// import { jwtDecode } from 'jwt-decode'; // No longer directly used
 import { Link } from 'react-router-dom';
 import { API_URL } from './config'; // Import the config
+import { getUserDetails, removeToken, getToken } from '../utils/auth'; // Import auth functions
+import ErrorDisplay from './common/ErrorDisplay'; // Import ErrorDisplay component
+
 const Profile = () => {
   const [enrollments, setEnrollments] = useState([]);
   const [error, setError] = useState(null);
-  const token = localStorage.getItem('token');
-  const decoded = token ? jwtDecode(token) : null;
-  const userId = decoded ? decoded.id : 1;
+  const userDetails = getUserDetails(); // Use auth function
+  const token = getToken(); // Still need token for headers
 
   useEffect(() => {
-    if (token) {
-      console.log(`Fetching enrollments for userId: ${userId}, token: ${token.substring(0, 10)}...`);
-      axios.get(`${API_URL}/api/courses/enrollments?user_id=${userId}`, {
+    if (userDetails && token) {
+      console.log(`Fetching enrollments for userId: ${userDetails.id}, token: ${token.substring(0, 10)}...`);
+      axios.get(`${API_URL}/api/courses/enrollments?user_id=${userDetails.id}`, {
         headers: { Authorization: `Bearer ${token}` }
       })
         .then(res => {
@@ -28,23 +30,27 @@ const Profile = () => {
           });
           if (err.response && err.response.status === 401) {
             setError('Unauthorized. Please log in again.');
-            localStorage.removeItem('token'); // Clear invalid token
+            removeToken(); // Use auth function
           } else {
             setError('Failed to load enrollment data.');
           }
         });
     } else {
-      setError('No token found. Please log in.');
+      setError('No token found or user details could not be decoded. Please log in.');
     }
-  }, [token, userId]);
+  }, [userDetails, token]); // Depend on userDetails and token
 
   const enrolledCourses = enrollments.filter(course => course.progress < 100);
   const completedCourses = enrollments.filter(course => course.progress === 100);
 
   const handleViewCertificate = (courseId) => {
-    console.log('Fetching certificate for:', { userId, courseId });
+    if (!userDetails || !token) {
+      setError('User not authenticated. Cannot fetch certificate.');
+      return;
+    }
+    console.log('Fetching certificate for:', { userId: userDetails.id, courseId });
     axios
-      .get(`${API_URL}/api/certificates?user_id=${userId}&course_id=${courseId}`, {
+      .get(`${API_URL}/api/certificates?user_id=${userDetails.id}&course_id=${courseId}`, {
         headers: { Authorization: `Bearer ${token}` },
         responseType: 'blob',
       })
@@ -67,18 +73,14 @@ const Profile = () => {
   return (
     <div className="container mt-4 p-4 bg-light rounded shadow-sm">
       <h1 className="mb-3">Profile</h1>
-      {error && (
-        <div className="alert alert-danger">
-          {error}
-          {error.includes('log in') && (
-            <button
-              className="btn btn-primary mt-2"
-              onClick={() => window.location.href = '/login'} // Adjust to your login route
-            >
-              Go to Login
-            </button>
-          )}
-        </div>
+      <ErrorDisplay message={error} />
+      {error && error.includes('log in') && (
+        <button
+          className="btn btn-primary mt-2"
+          onClick={() => window.location.href = '/login'} // Adjust to your login route
+        >
+          Go to Login
+        </button>
       )}
       {!error && (
         <>

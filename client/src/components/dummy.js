@@ -1,9 +1,10 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import axios from 'axios';
-import { jwtDecode } from 'jwt-decode';
+// import { jwtDecode } from 'jwt-decode'; // No longer directly used
 import './CourseContent.css';
 import { API_URL } from './config';
+import { getToken, getUserDetails } from '../utils/auth'; // Import auth functions
 
 const CourseContent = () => {
   const { id: courseId } = useParams();
@@ -15,9 +16,10 @@ const CourseContent = () => {
   const [quizScore, setQuizScore] = useState(null);
   const [attemptCount, setAttemptCount] = useState(0);
   const [maxScore, setMaxScore] = useState(100);
-  const token = localStorage.getItem('token');
-  const decoded = token ? jwtDecode(token) : null;
-  const userId = decoded ? decoded.id : 1;
+  const token = getToken(); // Use auth function
+  const userDetails = getUserDetails(); // Use auth function
+  // Fallback to a default/guest user ID if not logged in, or handle appropriately
+  const userId = userDetails ? userDetails.id : 1; 
   const [enrollmentId, setEnrollmentId] = useState(null);
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState(null);
@@ -58,7 +60,7 @@ const CourseContent = () => {
   );
 
   useEffect(() => {
-    if (showForums && courseId && token) {
+    if (showForums && courseId && token && userDetails) { // Ensure userDetails is available
       axios
         .get(`${API_URL}/api/courses/${courseId}/forum-posts`, {
           headers: { Authorization: `Bearer ${token}` },
@@ -71,12 +73,12 @@ const CourseContent = () => {
           setForumPosts([]);
         });
     }
-  }, [showForums, courseId, token]);
+  }, [showForums, courseId, token, userDetails]); // Add userDetails to dependency array
 
   useEffect(() => {
-    if (token && courseId) {
+    if (token && courseId && userDetails) { // Ensure userDetails is available
       axios
-        .get(`${API_URL}/api/courses/enrollments?user_id=${userId}`, {
+        .get(`${API_URL}/api/courses/enrollments?user_id=${userDetails.id}`, {
           headers: { Authorization: `Bearer ${token}` },
         })
         .then((res) => {
@@ -133,10 +135,10 @@ const CourseContent = () => {
           setCourseRating(0);
         });
     }
-  }, [token, userId, courseId, fetchContents]);
+  }, [token, userDetails, courseId, fetchContents]); // Add userDetails to dependency array
 
   useEffect(() => {
-    if (enrollmentId && selectedContent && expandedModule && contents[expandedModule]) {
+    if (enrollmentId && selectedContent && expandedModule && contents[expandedModule] && userDetails) { // Ensure userDetails
       const content = contents[expandedModule].find((c) => c.id === selectedContent);
       if (content && content.type.toLowerCase() === 'quiz') {
         const numericId = getNumericId(content.id); // Use numeric ID for quiz
@@ -168,11 +170,11 @@ const CourseContent = () => {
         setMaxScore(100);
       }
     }
-  }, [enrollmentId, selectedContent, expandedModule, contents, token]);
+  }, [enrollmentId, selectedContent, expandedModule, contents, token, userDetails]); // Add userDetails
 
   const markAsCompleted = (e) => {
     e.preventDefault();
-    if (selectedContent && enrollmentId) {
+    if (selectedContent && enrollmentId && userDetails) { // Ensure userDetails
       const content = contents[expandedModule].find((c) => c.id === selectedContent);
       const numericId = getNumericId(content.id); // Use numeric ID
       axios
@@ -194,7 +196,7 @@ const CourseContent = () => {
           alert('Failed to update progress.');
         });
     } else {
-      alert('Enrollment not found. Please enroll in the course first.');
+      alert('Enrollment not found or user not authenticated. Please enroll in the course first.');
     }
   };
 
@@ -215,8 +217,8 @@ const CourseContent = () => {
       return;
     }
 
-    if (!enrollmentId) {
-      alert('Please enroll in the course first.');
+    if (!enrollmentId || !userDetails) { // Ensure userDetails
+      alert('Please enroll in the course first or log in.');
       return;
     }
 
@@ -236,7 +238,7 @@ const CourseContent = () => {
         {
           enrollmentId,
           quizId: numericId,
-          userId,
+          userId: userDetails.id, // Use userDetails.id
           score: percentageScore,
         },
         {
@@ -281,7 +283,7 @@ const CourseContent = () => {
     setShowForums(false);
     setQuizScore(null);
     setQuizAnswers({});
-    if (content.type.toLowerCase() === 'quiz' && enrollmentId) {
+    if (content.type.toLowerCase() === 'quiz' && enrollmentId && userDetails) { // Ensure userDetails
       const numericId = getNumericId(content.id); // Use numeric ID
       axios
         .get(`${API_URL}/api/submissions/count`, {
@@ -311,12 +313,12 @@ const CourseContent = () => {
 
   const handleRatingSubmit = (e) => {
     e.preventDefault();
-    if (rating > 0 && rating <= 5 && enrollmentId) {
+    if (rating > 0 && rating <= 5 && enrollmentId && userDetails) { // Ensure userDetails
       axios
         .post(
           `${API_URL}/api/courses/${courseId}/rate`,
           {
-            userId,
+            userId: userDetails.id, // Use userDetails.id
             rating,
           },
           {
@@ -332,7 +334,7 @@ const CourseContent = () => {
           alert('Failed to submit rating. Check console for details.');
         });
     } else {
-      alert('Please select a rating between 1 and 5.');
+      alert('Please select a rating between 1 and 5, and ensure you are logged in and enrolled.');
     }
   };
 
@@ -342,7 +344,7 @@ const CourseContent = () => {
       alert('Please enter a post content.');
       return;
     }
-    if (!token) {
+    if (!token || !userDetails) { // Ensure userDetails
       alert('Please log in to post.');
       return;
     }
@@ -351,7 +353,7 @@ const CourseContent = () => {
       .post(
         `${API_URL}/api/courses/${courseId}/forum-posts`,
         {
-          userId,
+          userId: userDetails.id, // Use userDetails.id
           content: newPostContent,
         },
         {
@@ -369,7 +371,7 @@ const CourseContent = () => {
   };
 
   const handleUpvote = (postId) => {
-    if (!token) {
+    if (!token || !userDetails) { // Ensure userDetails
       alert('Please log in to upvote.');
       return;
     }
@@ -495,7 +497,7 @@ const CourseContent = () => {
                     or try a different browser.
                   </p>
                 </video>
-                <button className="btn btn-success mb-2" onClick={markAsCompleted} disabled={!enrollmentId}>
+                <button className="btn btn-success mb-2" onClick={markAsCompleted} disabled={!enrollmentId || !userDetails}>
                   Mark as Completed
                 </button>
                 <p>
@@ -519,7 +521,7 @@ const CourseContent = () => {
                 .
               </p>
             </iframe>
-            <button className="btn btn-success mb-2" onClick={markAsCompleted} disabled={!enrollmentId}>
+            <button className="btn btn-success mb-2" onClick={markAsCompleted} disabled={!enrollmentId || !userDetails}>
               Mark as Completed
             </button>
             <p>
@@ -556,13 +558,13 @@ const CourseContent = () => {
                     )}
                   </div>
                 ))}
-                <button className="btn btn-primary mt-3" onClick={handleQuizSubmit} disabled={attemptCount >= 3}>
+                <button className="btn btn-primary mt-3" onClick={handleQuizSubmit} disabled={attemptCount >= 3 || !userDetails}>
                   Submit Quiz
                 </button>
                 {quizScore !== null && (
                   <div className="mt-3">
                     <h5>Score: {quizScore.toFixed(2)}%</h5>
-                    <button className="btn btn-success mb-2" onClick={markAsCompleted} disabled={!enrollmentId}>
+                    <button className="btn btn-success mb-2" onClick={markAsCompleted} disabled={!enrollmentId || !userDetails}>
                       Mark as Completed
                     </button>
                     <p>
@@ -585,7 +587,7 @@ const CourseContent = () => {
                 {content.url}
               </a>
             </p>
-            <button className="btn btn-success mb-2" onClick={markAsCompleted} disabled={!enrollmentId}>
+            <button className="btn btn-success mb-2" onClick={markAsCompleted} disabled={!enrollmentId || !userDetails}>
               Mark as Completed
             </button>
             <p>
@@ -594,7 +596,7 @@ const CourseContent = () => {
           </div>
         );
     }
-  }, [error, showForums, selectedContent, expandedModule, contents, enrollmentId, progress, quizScore, attemptCount, maxScore, forumPosts, newPostContent, token, userId, markAsCompleted, handleQuizSubmit, handleAnswerChange]);
+  }, [error, showForums, selectedContent, expandedModule, contents, enrollmentId, progress, quizScore, attemptCount, maxScore, forumPosts, newPostContent, token, userDetails, markAsCompleted, handleQuizSubmit, handleAnswerChange]); // Add userDetails
 
   const memoizedRenderContent = renderContent();
 

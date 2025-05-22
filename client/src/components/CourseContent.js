@@ -1,9 +1,11 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import axios from 'axios';
-import { jwtDecode } from 'jwt-decode';
+// import { jwtDecode } from 'jwt-decode'; // No longer directly used
 import './CourseContent.css'; // Custom CSS file
 import { API_URL } from './config';
+import { getToken, getUserDetails } from '../utils/auth'; // Import auth functions
+import ErrorDisplay from './common/ErrorDisplay'; // Import ErrorDisplay
 
 const CourseContent = () => {
   const { id: courseId } = useParams();
@@ -15,9 +17,10 @@ const CourseContent = () => {
   const [quizScore, setQuizScore] = useState(null);
   const [attemptCount, setAttemptCount] = useState(0);
   const [maxScore, setMaxScore] = useState(100);
-  const token = localStorage.getItem('token');
-  const decoded = token ? jwtDecode(token) : null;
-  const userId = decoded ? decoded.id : 1;
+  const token = getToken(); // Use auth function
+  const userDetails = getUserDetails(); // Use auth function
+  // Fallback to a default/guest user ID if not logged in, or handle appropriately
+  const userId = userDetails ? userDetails.id : 1; 
   const [enrollmentId, setEnrollmentId] = useState(null);
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState(null);
@@ -227,7 +230,9 @@ const CourseContent = () => {
   };
 
   const renderContent = () => {
-    if (error) return <div className="alert alert-danger">{error}</div>;
+    // ErrorDisplay will render null if error is null, so we can call it unconditionally.
+    // However, the original logic returns early, so we'll keep that pattern.
+    if (error) return <ErrorDisplay message={error} />; 
     if (!selectedContent || !contents[expandedModule]) return <p className="text-center">Select a content item to view details.</p>;
 
     const content = contents[expandedModule].find((c) => c.id === selectedContent);

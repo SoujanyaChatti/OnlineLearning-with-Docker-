@@ -3,6 +3,8 @@ import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import './InstructorDashboard.css';
 import { API_URL } from './config'; // Import the config
+import ErrorDisplay from './common/ErrorDisplay'; // Import ErrorDisplay component
+import { getToken, getUserDetails } from '../utils/auth'; // Import auth functions
 
 const InstructorDashboard = () => {
   const [view, setView] = useState('myCourses'); // 'myCourses' or 'createCourse'
@@ -19,45 +21,32 @@ const InstructorDashboard = () => {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const token = localStorage.getItem('token');
+  const token = getToken(); // Use auth function
+  const userDetails = getUserDetails(); // Use auth function
   const navigate = useNavigate();
 
   // Debug log to track component re-renders
   console.log('InstructorDashboard rendering, view:', view);
 
-  // Safely decode token ID
-  const tokenId = React.useMemo(() => {
-    if (!token) {
-      console.error('No token found');
-      return null;
-    }
-    try {
-      const [header, payload, signature] = token.split('.');
-      if (!payload) throw new Error('Invalid token format');
-      const decodedPayload = JSON.parse(atob(payload));
-      console.log('Decoded payload:', decodedPayload);
-      return decodedPayload.id || decodedPayload.sub; // Use 'sub' if 'id' isn't the field
-    } catch (e) {
-      console.error('Invalid token parsing:', e);
-      return null;
-    }
-  }, [token]);
+  // Get user ID from userDetails
+  const instructorId = userDetails ? userDetails.id : null;
 
-  // Debug effect to monitor token/tokenId
+  // Debug effect to monitor token/instructorId
   useEffect(() => {
     console.log('Token available:', !!token);
-    console.log('TokenId parsed:', tokenId);
-  }, [token, tokenId]);
+    console.log('Instructor ID parsed:', instructorId);
+  }, [token, instructorId]);
 
-  // Effect to fetch courses when tokenId is available
+  // Effect to fetch courses when instructorId is available
   useEffect(() => {
-    if (tokenId) {
-      console.log('TokenId available, fetching courses');
+    if (instructorId) {
+      console.log('Instructor ID available, fetching courses');
       fetchCourses();
     } else {
-      console.warn('No tokenId available, cannot fetch courses');
+      console.warn('No Instructor ID available, cannot fetch courses. User might not be logged in or token is invalid.');
+      setError('User details not found. Please log in again.'); // Set an error if userDetails is null
     }
-  }, [tokenId]);
+  }, [instructorId]); // Depend on instructorId
 
   // Debug effect to monitor courses state
   useEffect(() => {
@@ -68,16 +57,16 @@ const InstructorDashboard = () => {
     setLoading(true);
     setError(null);
     
-    if (!tokenId) {
+    if (!instructorId) { // Check instructorId
       setError('User ID not found. Please log in again.');
       setLoading(false);
       return;
     }
     
     try {
-      console.log(`Fetching courses for instructor ID: ${tokenId} with token: ${token.substring(0, 10)}...`);
+      console.log(`Fetching courses for instructor ID: ${instructorId} with token: ${token ? token.substring(0, 10) : 'N/A'}...`);
       
-    const response = await axios.get(`${API_URL}/api/courses/instructor/${tokenId}`, {
+    const response = await axios.get(`${API_URL}/api/courses/instructor/${instructorId}`, { // Use instructorId
         headers: { Authorization: `Bearer ${token}` },
       });
       
@@ -250,7 +239,7 @@ const InstructorDashboard = () => {
       </div>
 
       {loading && <div className="alert alert-info">Loading...</div>}
-      {error && <div className="alert alert-danger">{error}</div>}
+      <ErrorDisplay message={error} />
 
       {view === 'myCourses' && (
         <div>
@@ -265,13 +254,13 @@ const InstructorDashboard = () => {
               <p>Found {courses.length} course(s)</p>
               <ul className="list-group course-list">
                 {courses.map((course) => (
-                  <li 
-                    key={course.id} 
+              <li
+                key={course.id}
                     className="list-group-item d-flex justify-content-between align-items-center course-item"
-                    style={{ border: '1px solid #ddd', marginBottom: '8px', padding: '10px' }}
+                // Removed inline style, consider moving to CSS file if complex
                   >
                     <div>
-                      <strong>{course.title}</strong> 
+                  <strong>{course.title}</strong>
                       <span className="ms-2 badge bg-secondary">{course.category}</span>
                       <span className="ms-2 badge bg-info">{course.difficulty}</span>
                     </div>
@@ -289,7 +278,8 @@ const InstructorDashboard = () => {
             </div>
           )}
           {selectedCourse && (
-            <div className="mt-4 selected-course-container" style={{ padding: '15px', border: '1px solid #eee', borderRadius: '5px' }}>
+        // Removed inline style, consider moving to CSS file if complex
+        <div className="mt-4 selected-course-container"> 
               <h3>Manage Course: {selectedCourse.title}</h3>
               <button className="btn btn-secondary mb-2" onClick={() => setSelectedCourse(null)}>
                 Back to Courses
